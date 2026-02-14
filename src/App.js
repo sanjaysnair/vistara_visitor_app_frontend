@@ -44,6 +44,7 @@ function App() {
   
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
+  const cameraSessionRef = useRef(null);
 
   // Initialize camera
   const startCamera = async () => {
@@ -458,21 +459,25 @@ function App() {
   // Handle camera setup when stream becomes available
   useEffect(() => {
     if (!stream || !videoRef.current) {
-      console.log('[Effect] Skipping: no stream or videoRef', { stream: !!stream, videoRef: !!videoRef.current });
       return;
     }
 
-    console.log('Setting up video element with stream...');
     const videoElement = videoRef.current;
+    const sessionId = {}; // Unique object to identify this camera session
+    cameraSessionRef.current = sessionId;
+    
+    console.log('Setting up video element with stream...');
     videoElement.srcObject = stream;
     console.log('✅ srcObject set');
 
     let playTimer = null;
-    let mounted = true;
-    console.log('[Setup] Defining attemptPlay function...');
 
     const attemptPlay = async () => {
-      if (!mounted) return;
+      // Only proceed if this session is still active
+      if (cameraSessionRef.current !== sessionId) {
+        console.log('[Play] Session ended, skipping play');
+        return;
+      }
       
       try {
         console.log('[Play] Calling play()...');
@@ -485,28 +490,34 @@ function App() {
 
     // Wait for metadata or timeout
     const handleMetadata = () => {
-      if (mounted) {
+      // Only proceed if this session is still active
+      if (cameraSessionRef.current === sessionId) {
         console.log('✅ Metadata loaded');
         attemptPlay();
       }
     };
 
-    console.log('[Setup] Registering metadata listener...');
     videoElement.addEventListener('loadedmetadata', handleMetadata);
     console.log('[Setup] Metadata listener registered');
 
-    // Fallback timer after 1 second
-    console.log('[Setup] Scheduling timeout in 1000ms...');
+    // Fallback timer after 500ms (was 1000ms, but seems to be getting cleared)
+    console.log('[Setup] Scheduling timeout in 500ms...');
     playTimer = setTimeout(() => {
-      if (mounted) {
-        console.log('[Timeout] Attempting play via timeout');
+      // Only proceed if this session is still active
+      if (cameraSessionRef.current === sessionId) {
+        console.log('[Timeout] Timer fired - attempting play');
         attemptPlay();
+      } else {
+        console.log('[Timeout] Session ended, skipping play');
       }
-    }, 1000);
-    console.log('[Setup] Timeout scheduled');
+    }, 500);
 
     return () => {
-      mounted = false;
+      console.log('🗑️ Cleanup for session');
+      // Mark this session as ended
+      if (cameraSessionRef.current === sessionId) {
+        cameraSessionRef.current = null;
+      }
       videoElement.removeEventListener('loadedmetadata', handleMetadata);
       if (playTimer) clearTimeout(playTimer);
     };
