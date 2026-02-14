@@ -44,7 +44,6 @@ function App() {
   
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
-  const cameraStreamRef = useRef(null);
 
   // Initialize camera
   const startCamera = async () => {
