@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visitor Check-In</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            max-width: 500px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 24px;
+            text-align: center;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            text-align: center;
+            font-size: 14px;
+        }
+
+        .camera-container {
+            position: relative;
+            width: 100%;
+            background: #000;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+
+        #video, #canvas {
+            width: 100%;
+            display: block;
+        }
+
+        #canvas {
+            display: none;
+        }
+
+        .preview-image {
+            width: 100%;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+
+        .button {
+            width: 100%;
+            padding: 15px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-bottom: 10px;
+            transition: all 0.3s ease;
+        }
+
+        .button-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .button-primary:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .button-secondary {
+            background: #f3f4f6;
+            color: #333;
+        }
+
+        .button-secondary:hover {
+            background: #e5e7eb;
+        }
+
+        .button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 500;
+            font-size: 14px;
+        }
+
+        input[type="email"],
+        input[type="text"] {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s ease;
+        }
+
+        input[type="email"]:focus,
+        input[type="text"]:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .status-message {
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            text-align: center;
+            font-size: 14px;
+            display: none;
+        }
+
+        .status-success {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .status-error {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .status-info {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        @media (max-width: 480px) {
+            .container {
+                padding: 20px;
+            }
+
+            h1 {
+                font-size: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🏢 Visitor Check-In</h1>
+        <p class="subtitle">Please take a photo for security records</p>
+
+        <div id="statusMessage" class="status-message"></div>
+
+        <div id="cameraView">
+            <div class="camera-container">
+                <video id="video" autoplay playsinline></video>
+                <canvas id="canvas"></canvas>
+            </div>
+            <button id="captureBtn" class="button button-primary">📸 Capture Photo</button>
+        </div>
+
+        <div id="photoView" class="hidden">
+            <img id="preview" class="preview-image" alt="Captured photo">
+            
+            <div class="form-group">
+                <label for="visitorName">Visitor Name (Optional)</label>
+                <input type="text" id="visitorName" placeholder="Enter name">
+            </div>
+
+            <div class="form-group">
+                <label for="emailInput">Send to Email Address</label>
+                <input type="email" id="emailInput" placeholder="security@apartment.com" required>
+            </div>
+
+            <button id="sendBtn" class="button button-primary">📧 Send Photo</button>
+            <button id="retakeBtn" class="button button-secondary">🔄 Retake Photo</button>
+        </div>
+    </div>
+
+    <script>
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        const captureBtn = document.getElementById('captureBtn');
+        const sendBtn = document.getElementById('sendBtn');
+        const retakeBtn = document.getElementById('retakeBtn');
+        const preview = document.getElementById('preview');
+        const cameraView = document.getElementById('cameraView');
+        const photoView = document.getElementById('photoView');
+        const statusMessage = document.getElementById('statusMessage');
+        const emailInput = document.getElementById('emailInput');
+        const visitorNameInput = document.getElementById('visitorName');
+
+        let stream = null;
+        let photoDataUrl = null;
+
+        // Initialize camera
+        async function initCamera() {
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { 
+                        facingMode: 'user',
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 }
+                    } 
+                });
+                video.srcObject = stream;
+                showStatus('Camera ready', 'info');
+            } catch (err) {
+                showStatus('Camera access denied. Please allow camera permissions.', 'error');
+                console.error('Error accessing camera:', err);
+            }
+        }
+
+        // Capture photo
+        captureBtn.addEventListener('click', () => {
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(video, 0, 0);
+            
+            photoDataUrl = canvas.toDataURL('image/jpeg', 0.8);
+            preview.src = photoDataUrl;
+            
+            // Stop camera stream
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+            }
+            
+            cameraView.classList.add('hidden');
+            photoView.classList.remove('hidden');
+            showStatus('Photo captured successfully', 'success');
+        });
+
+        // Retake photo
+        retakeBtn.addEventListener('click', () => {
+            photoView.classList.add('hidden');
+            cameraView.classList.remove('hidden');
+            initCamera();
+        });
+
+        // Send photo via email
+        sendBtn.addEventListener('click', async () => {
+            const email = emailInput.value.trim();
+            const visitorName = visitorNameInput.value.trim();
+
+            if (!email) {
+                showStatus('Please enter an email address', 'error');
+                return;
+            }
+
+            if (!photoDataUrl) {
+                showStatus('No photo captured', 'error');
+                return;
+            }
+
+            sendBtn.disabled = true;
+            showStatus('Sending photo...', 'info');
+
+            try {
+                // Convert data URL to blob
+                const blob = await fetch(photoDataUrl).then(r => r.blob());
+                
+                // Create FormData
+                const formData = new FormData();
+                formData.append('photo', blob, 'visitor-photo.jpg');
+                formData.append('email', email);
+                formData.append('visitorName', visitorName);
+                formData.append('timestamp', new Date().toISOString());
+
+                // Send to your backend endpoint
+                const response = await fetch('/send-photo', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (response.ok) {
+                    showStatus('✅ Photo sent successfully!', 'success');
+                    setTimeout(() => {
+                        resetApp();
+                    }, 2000);
+                } else {
+                    throw new Error('Server error');
+                }
+            } catch (err) {
+                console.error('Error sending photo:', err);
+                showStatus('⚠️ Unable to send. Please save the photo and contact security.', 'error');
+                
+                // Offer download as fallback
+                const link = document.createElement('a');
+                link.href = photoDataUrl;
+                link.download = `visitor-${Date.now()}.jpg`;
+                link.click();
+            } finally {
+                sendBtn.disabled = false;
+            }
+        });
+
+        function showStatus(message, type) {
+            statusMessage.textContent = message;
+            statusMessage.className = 'status-message status-' + type;
+            statusMessage.style.display = 'block';
+            
+            if (type === 'success') {
+                setTimeout(() => {
+                    statusMessage.style.display = 'none';
+                }, 3000);
+            }
+        }
+
+        function resetApp() {
+            photoView.classList.add('hidden');
+            cameraView.classList.remove('hidden');
+            emailInput.value = '';
+            visitorNameInput.value = '';
+            photoDataUrl = null;
+            initCamera();
+        }
+
+        // Initialize on load
+        initCamera();
+    </script>
+</body>
+</html>

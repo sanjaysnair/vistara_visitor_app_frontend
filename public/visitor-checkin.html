@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visitor Security Check-In</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            max-width: 500px;
+            width: 100%;
+            margin: 0 auto;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 24px;
+            text-align: center;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 25px;
+            text-align: center;
+            font-size: 14px;
+        }
+
+        .form-section {
+            margin-bottom: 25px;
+        }
+
+        .section-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 15px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #f3f4f6;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 6px;
+            color: #555;
+            font-weight: 500;
+            font-size: 14px;
+        }
+
+        .required {
+            color: #ef4444;
+        }
+
+        input[type="text"],
+        input[type="tel"],
+        input[type="email"],
+        select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s ease;
+        }
+
+        input:focus,
+        select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .camera-container {
+            position: relative;
+            width: 100%;
+            background: #000;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-bottom: 15px;
+            min-height: 250px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #video {
+            width: 100%;
+            display: block;
+        }
+
+        #canvas {
+            display: none;
+        }
+
+        .preview-image {
+            width: 100%;
+            border-radius: 10px;
+            display: block;
+        }
+
+        .camera-placeholder {
+            color: #999;
+            text-align: center;
+            padding: 40px 20px;
+        }
+
+        .button {
+            width: 100%;
+            padding: 15px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-bottom: 10px;
+            transition: all 0.3s ease;
+        }
+
+        .button-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .button-primary:hover:not(:disabled) {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .button-secondary {
+            background: #f3f4f6;
+            color: #333;
+        }
+
+        .button-secondary:hover {
+            background: #e5e7eb;
+        }
+
+        .button-success {
+            background: #10b981;
+            color: white;
+        }
+
+        .button-success:hover:not(:disabled) {
+            background: #059669;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(16, 185, 129, 0.4);
+        }
+
+        .button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .status-message {
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            text-align: center;
+            font-size: 14px;
+            display: none;
+        }
+
+        .status-success {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .status-error {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .status-info {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .photo-status {
+            text-align: center;
+            padding: 10px;
+            background: #f3f4f6;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            font-size: 14px;
+            color: #666;
+        }
+
+        .photo-taken {
+            background: #d1fae5;
+            color: #065f46;
+            font-weight: 500;
+        }
+
+        .help-text {
+            font-size: 12px;
+            color: #999;
+            margin-top: 4px;
+        }
+
+        @media (max-width: 480px) {
+            .container {
+                padding: 20px;
+            }
+
+            h1 {
+                font-size: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🏢 Visitor Check-In</h1>
+        <p class="subtitle">Please fill in your details for security records</p>
+
+        <div id="statusMessage" class="status-message"></div>
+
+        <!-- Visitor Information Form -->
+        <div class="form-section">
+            <div class="section-title">📝 Visitor Information</div>
+            
+            <div class="form-group">
+                <label for="visitorName">Full Name <span class="required">*</span></label>
+                <input type="text" id="visitorName" placeholder="Enter your full name" required>
+            </div>
+
+            <div class="form-group">
+                <label for="visitorPhone">Phone Number <span class="required">*</span></label>
+                <input type="tel" id="visitorPhone" placeholder="+91 98765 43210" required>
+                <div class="help-text">Include country code if applicable</div>
+            </div>
+
+            <div class="form-group">
+                <label for="flatNumber">Flat Number Visiting <span class="required">*</span></label>
+                <select id="flatNumber" required>
+                    <option value="">-- Select Flat Number --</option>
+                    <optgroup label="Ground Floor (G)">
+                        <option value="G01">G01</option>
+                        <option value="G02">G02</option>
+                        <option value="G03">G03</option>
+                        <option value="G04">G04</option>
+                        <option value="G05">G05</option>
+                        <option value="G06">G06</option>
+                        <option value="G07">G07</option>
+                        <option value="G08">G08</option>
+                        <option value="G09">G09</option>
+                        <option value="G10">G10</option>
+                        <option value="G11">G11</option>
+                    </optgroup>
+                    <optgroup label="First Floor (1)">
+                        <option value="101">101</option>
+                        <option value="102">102</option>
+                        <option value="103">103</option>
+                        <option value="104">104</option>
+                        <option value="105">105</option>
+                        <option value="106">106</option>
+                        <option value="107">107</option>
+                        <option value="108">108</option>
+                        <option value="109">109</option>
+                        <option value="110">110</option>
+                        <option value="111">111</option>
+                    </optgroup>
+                    <optgroup label="Second Floor (2)">
+                        <option value="201">201</option>
+                        <option value="202">202</option>
+                        <option value="203">203</option>
+                        <option value="204">204</option>
+                        <option value="205">205</option>
+                        <option value="206">206</option>
+                        <option value="207">207</option>
+                        <option value="208">208</option>
+                        <option value="209">209</option>
+                        <option value="210">210</option>
+                        <option value="211">211</option>
+                    </optgroup>
+                    <optgroup label="Third Floor (3)">
+                        <option value="301">301</option>
+                        <option value="302">302</option>
+                        <option value="303">303</option>
+                        <option value="304">304</option>
+                        <option value="305">305</option>
+                        <option value="306">306</option>
+                        <option value="307">307</option>
+                        <option value="308">308</option>
+                        <option value="309">309</option>
+                        <option value="310">310</option>
+                        <option value="311">311</option>
+                    </optgroup>
+                </select>
+            </div>
+        </div>
+
+        <!-- Photo Section -->
+        <div class="form-section">
+            <div class="section-title">📸 Visitor Photo</div>
+            
+            <div id="photoStatus" class="photo-status">
+                📷 No photo taken yet
+            </div>
+
+            <div id="cameraView">
+                <div class="camera-container">
+                    <video id="video" autoplay playsinline></video>
+                    <div id="cameraPlaceholder" class="camera-placeholder">
+                        <p>📷 Camera loading...</p>
+                        <p style="font-size: 12px; margin-top: 10px;">Please allow camera access</p>
+                    </div>
+                </div>
+                <button id="captureBtn" class="button button-primary">📸 Take Photo</button>
+            </div>
+
+            <div id="photoView" class="hidden">
+                <div class="camera-container">
+                    <img id="preview" class="preview-image" alt="Captured photo">
+                </div>
+                <button id="retakeBtn" class="button button-secondary">🔄 Retake Photo</button>
+            </div>
+
+            <canvas id="canvas"></canvas>
+        </div>
+
+        <!-- Submit Button -->
+        <button id="submitBtn" class="button button-success" disabled>✅ Submit Check-In</button>
+        
+        <div style="margin-top: 15px; text-align: center; font-size: 12px; color: #999;">
+            All fields marked with <span class="required">*</span> are required
+        </div>
+    </div>
+
+    <!-- EmailJS SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+    
+    <script>
+        // ============================================
+        // CONFIGURATION - CHANGE THESE VALUES
+        // ============================================
+        const CONFIG = {
+            // Get these from https://www.emailjs.com/ (Free account)
+            EMAILJS_PUBLIC_KEY: 'YOUR_PUBLIC_KEY_HERE',
+            EMAILJS_SERVICE_ID: 'YOUR_SERVICE_ID_HERE',
+            EMAILJS_TEMPLATE_ID: 'YOUR_TEMPLATE_ID_HERE',
+            
+            // Security email where notifications will be sent
+            SECURITY_EMAIL: 'security@apartment.com'
+        };
+        // ============================================
+
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        const captureBtn = document.getElementById('captureBtn');
+        const retakeBtn = document.getElementById('retakeBtn');
+        const submitBtn = document.getElementById('submitBtn');
+        const preview = document.getElementById('preview');
+        const cameraView = document.getElementById('cameraView');
+        const photoView = document.getElementById('photoView');
+        const statusMessage = document.getElementById('statusMessage');
+        const photoStatus = document.getElementById('photoStatus');
+        const cameraPlaceholder = document.getElementById('cameraPlaceholder');
+
+        // Form fields
+        const visitorName = document.getElementById('visitorName');
+        const visitorPhone = document.getElementById('visitorPhone');
+        const flatNumber = document.getElementById('flatNumber');
+
+        let stream = null;
+        let photoDataUrl = null;
+
+        // Initialize EmailJS
+        if (CONFIG.EMAILJS_PUBLIC_KEY !== 'YOUR_PUBLIC_KEY_HERE') {
+            emailjs.init(CONFIG.EMAILJS_PUBLIC_KEY);
+        }
+
+        // Initialize camera
+        async function initCamera() {
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { 
+                        facingMode: 'user',
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 }
+                    } 
+                });
+                video.srcObject = stream;
+                video.style.display = 'block';
+                cameraPlaceholder.style.display = 'none';
+            } catch (err) {
+                cameraPlaceholder.innerHTML = '<p style="color: #ef4444;">❌ Camera access denied</p><p style="font-size: 12px; margin-top: 10px;">Please allow camera permissions in your browser settings</p>';
+                showStatus('Camera access denied. Please allow camera permissions.', 'error');
+                console.error('Error accessing camera:', err);
+            }
+        }
+
+        // Capture photo
+        captureBtn.addEventListener('click', () => {
+            if (!video.srcObject) {
+                showStatus('Camera not ready. Please wait or refresh the page.', 'error');
+                return;
+            }
+
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(video, 0, 0);
+            
+            photoDataUrl = canvas.toDataURL('image/jpeg', 0.8);
+            preview.src = photoDataUrl;
+            
+            // Stop camera stream
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+            }
+            
+            cameraView.classList.add('hidden');
+            photoView.classList.remove('hidden');
+            photoStatus.textContent = '✅ Photo captured successfully';
+            photoStatus.classList.add('photo-taken');
+            
+            checkFormValidity();
+        });
+
+        // Retake photo
+        retakeBtn.addEventListener('click', () => {
+            photoView.classList.add('hidden');
+            cameraView.classList.remove('hidden');
+            photoStatus.textContent = '📷 No photo taken yet';
+            photoStatus.classList.remove('photo-taken');
+            photoDataUrl = null;
+            initCamera();
+            checkFormValidity();
+        });
+
+        // Check if all required fields are filled
+        function checkFormValidity() {
+            const isValid = visitorName.value.trim() && 
+                          visitorPhone.value.trim() && 
+                          flatNumber.value.trim() && 
+                          photoDataUrl !== null;
+            
+            submitBtn.disabled = !isValid;
+        }
+
+        // Add event listeners to form fields
+        [visitorName, visitorPhone, flatNumber].forEach(field => {
+            field.addEventListener('input', checkFormValidity);
+        });
+
+        // Submit form
+        submitBtn.addEventListener('click', async () => {
+            if (!photoDataUrl) {
+                showStatus('Please take a photo first', 'error');
+                return;
+            }
+
+            const data = {
+                name: visitorName.value.trim(),
+                phone: visitorPhone.value.trim(),
+                flat: flatNumber.value.trim(),
+                photo: photoDataUrl,
+                timestamp: new Date().toISOString()
+            };
+
+            submitBtn.disabled = true;
+            submitBtn.textContent = '📤 Sending...';
+
+            try {
+                await sendEmail(data);
+                
+                showStatus('✅ Check-in successful! Security has been notified.', 'success');
+                
+                // Reset form after 3 seconds
+                setTimeout(() => {
+                    resetForm();
+                }, 3000);
+
+            } catch (err) {
+                console.error('Error submitting:', err);
+                showStatus('⚠️ Unable to send email. Downloading records as backup.', 'error');
+                submitBtn.disabled = false;
+                submitBtn.textContent = '✅ Submit Check-In';
+                
+                // Offer download as fallback
+                downloadRecord(data);
+            }
+        });
+
+        // Send email using EmailJS
+        async function sendEmail(data) {
+            if (CONFIG.EMAILJS_PUBLIC_KEY === 'YOUR_PUBLIC_KEY_HERE') {
+                throw new Error('EmailJS not configured. Please update CONFIG values.');
+            }
+
+            const templateParams = {
+                to_email: CONFIG.SECURITY_EMAIL,
+                visitor_name: data.name,
+                visitor_phone: data.phone,
+                flat_number: data.flat,
+                timestamp: new Date(data.timestamp).toLocaleString('en-IN', { 
+                    timeZone: 'Asia/Kolkata',
+                    dateStyle: 'full',
+                    timeStyle: 'long'
+                }),
+                photo_data: data.photo
+            };
+
+            const response = await emailjs.send(
+                CONFIG.EMAILJS_SERVICE_ID,
+                CONFIG.EMAILJS_TEMPLATE_ID,
+                templateParams
+            );
+
+            if (response.status !== 200) {
+                throw new Error('Email send failed');
+            }
+
+            // Also download as local backup
+            downloadRecord(data);
+        }
+
+        // Download visitor record as backup
+        function downloadRecord(data) {
+            // Download photo
+            const photoFilename = `visitor-${data.name.replace(/\s/g, '-')}-${Date.now()}.jpg`;
+            const photoLink = document.createElement('a');
+            photoLink.href = data.photo;
+            photoLink.download = photoFilename;
+            photoLink.click();
+            
+            // Download text record
+            const textData = `VISITOR CHECK-IN RECORD
+============================
+Name: ${data.name}
+Phone: ${data.phone}
+Flat Number: ${data.flat}
+Date & Time: ${new Date(data.timestamp).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}
+Photo File: ${photoFilename}
+============================
+
+This record was automatically generated by the Apartment Security System.`;
+            
+            const blob = new Blob([textData], { type: 'text/plain' });
+            const textLink = document.createElement('a');
+            textLink.href = URL.createObjectURL(blob);
+            textLink.download = `visitor-record-${Date.now()}.txt`;
+            textLink.click();
+        }
+
+        function showStatus(message, type) {
+            statusMessage.textContent = message;
+            statusMessage.className = 'status-message status-' + type;
+            statusMessage.style.display = 'block';
+            
+            setTimeout(() => {
+                statusMessage.style.display = 'none';
+            }, 5000);
+        }
+
+        function resetForm() {
+            visitorName.value = '';
+            visitorPhone.value = '';
+            flatNumber.value = '';
+            photoDataUrl = null;
+            photoView.classList.add('hidden');
+            cameraView.classList.remove('hidden');
+            photoStatus.textContent = '📷 No photo taken yet';
+            photoStatus.classList.remove('photo-taken');
+            submitBtn.disabled = true;
+            submitBtn.textContent = '✅ Submit Check-In';
+            initCamera();
+        }
+
+        // Initialize camera on load
+        initCamera();
+    </script>
+</body>
+</html>
