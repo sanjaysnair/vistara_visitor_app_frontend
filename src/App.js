@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback, useLayoutEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Camera, RefreshCw, Send, CheckCircle, AlertCircle, User, Phone, Home, Mail, Eye, Trash2, Edit2, BarChart3, Search, Download, Printer } from 'lucide-react';
 import './App.css';
 
