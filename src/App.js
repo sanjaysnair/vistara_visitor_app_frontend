@@ -464,6 +464,7 @@ function App() {
     }
 
     console.log('Setting up video element with stream...');
+    const videoElement = videoRef.current;
     videoElement.srcObject = stream;
     console.log('✅ srcObject set');
 
