@@ -42,6 +42,8 @@ function App() {
   const [searchResults, setSearchResults] = useState([]);
   const [searchLoading, setSearchLoading] = useState(false);
   
+  const videoRef = useRef(null);
+  const canvasRef = useRef(null);
   const cameraStreamRef = useRef(null);
 
   // Initialize camera
