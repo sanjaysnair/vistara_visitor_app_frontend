@@ -45,6 +45,12 @@ function App() {
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
   const cameraSessionRef = useRef(null);
+  const streamRef = useRef(null);
+  
+  // Keep stream in sync with ref to avoid effect re-runs
+  useEffect(() => {
+    streamRef.current = stream;
+  }, [stream]);
 
   // Initialize camera
   const startCamera = async () => {
@@ -456,13 +462,15 @@ function App() {
     };
   }, [stopCamera]);
 
-  // Handle camera setup when cameraActive changes (more stable than stream reference)
+  // Handle camera setup when cameraActive changes
   useEffect(() => {
-    if (!cameraActive || !videoRef.current || !stream) {
+    if (!cameraActive || !videoRef.current || !streamRef.current) {
+      console.log('[Effect] Guard: cameraActive=' + cameraActive + ', videoRef=' + !!videoRef.current + ', stream=' + !!streamRef.current);
       return;
     }
 
     const videoElement = videoRef.current;
+    const stream = streamRef.current;
     const sessionId = {}; // Unique object to identify this camera session
     cameraSessionRef.current = sessionId;
     
@@ -521,7 +529,7 @@ function App() {
       videoElement.removeEventListener('loadedmetadata', handleMetadata);
       if (playTimer) clearTimeout(playTimer);
     };
-  }, [cameraActive, stream]);
+  }, [cameraActive]);
 
   // Monitor photo state changes
   useEffect(() => {
