@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Camera, RefreshCw, Send, CheckCircle, AlertCircle, User, Phone, Home, Mail, Eye, Trash2, Edit2, BarChart3, Search, Download, Printer } from 'lucide-react';
 import './App.css';
 
@@ -72,13 +72,13 @@ function App() {
   };
 
   // Stop camera
-  const stopCamera = () => {
+  const stopCamera = useCallback(() => {
     if (stream) {
       stream.getTracks().forEach(track => track.stop());
       setStream(null);
     }
     setCameraActive(false);
-  };
+  }, [stream]);
 
   // Capture photo
   const capturePhoto = () => {
