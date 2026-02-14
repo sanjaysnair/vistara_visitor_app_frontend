@@ -8,7 +8,6 @@ function App() {
   // Main navigation state
   const [currentPage, setCurrentPage] = useState('checkin'); // checkin or admin
   const [adminPassword, setAdminPassword] = useState('');
-  const [adminAuthfailed, setAdminAuthFailed] = useState(false);
 
   // Admin tab state
   const [currentAdminTab, setCurrentAdminTab] = useState('visitors'); // visitors, stats, search
@@ -193,12 +192,11 @@ function App() {
     if (adminPassword === 'admin123') {
       setCurrentPage('admin');
       setAdminPassword('');
-      setAdminAuthFailed(false);
       showNotification('success', '✅ Admin panel unlocked');
     } else {
-      setAdminAuthFailed(true);
       showNotification('error', '❌ Incorrect password');
-      setTimeout(() => setAdminAuthFailed(false), 3000);
+    }
+  };
     }
   };
 
@@ -448,7 +446,7 @@ function App() {
     return () => {
       stopCamera();
     };
-  }, []);
+  }, [stopCamera]);
 
   // Handle camera setup when cameraActive changes
   useEffect(() => {
