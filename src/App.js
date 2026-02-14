@@ -450,14 +450,36 @@ function App() {
   useEffect(() => {
     if (cameraActive && videoRef.current && stream) {
       console.log('Setting up video element with stream...');
-      videoRef.current.srcObject = stream;
+      const videoElement = videoRef.current;
+      videoElement.srcObject = stream;
       
-      videoRef.current.onloadedmetadata = () => {
+      const handleMetadata = () => {
         console.log('Video metadata loaded!');
-        console.log('Video dimensions:', videoRef.current.videoWidth, 'x', videoRef.current.videoHeight);
+        if (videoElement) {
+          console.log('Video dimensions:', videoElement.videoWidth, 'x', videoElement.videoHeight);
+        }
       };
       
-      videoRef.current.play().catch(err => console.error('Play error:', err));
+      videoElement.addEventListener('loadedmetadata', handleMetadata);
+      
+      // Attempt to play with proper error handling
+      const playPromise = videoElement.play();
+      if (playPromise !== undefined) {
+        playPromise
+          .catch(err => {
+            console.error('Play error:', err);
+            // Try playing again after a short delay
+            setTimeout(() => {
+              if (videoElement && videoElement.srcObject) {
+                videoElement.play().catch(e => console.error('Retry play error:', e));
+              }
+            }, 500);
+          });
+      }
+      
+      return () => {
+        videoElement.removeEventListener('loadedmetadata', handleMetadata);
+      };
     }
   }, [cameraActive, stream]);
 
