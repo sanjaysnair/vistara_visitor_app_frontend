@@ -456,9 +456,9 @@ function App() {
     };
   }, [stopCamera]);
 
-  // Handle camera setup when stream becomes available
+  // Handle camera setup when cameraActive changes (more stable than stream reference)
   useEffect(() => {
-    if (!stream || !videoRef.current) {
+    if (!cameraActive || !videoRef.current || !stream) {
       return;
     }
 
@@ -500,7 +500,7 @@ function App() {
     videoElement.addEventListener('loadedmetadata', handleMetadata);
     console.log('[Setup] Metadata listener registered');
 
-    // Fallback timer after 500ms (was 1000ms, but seems to be getting cleared)
+    // Fallback timer after 500ms
     console.log('[Setup] Scheduling timeout in 500ms...');
     playTimer = setTimeout(() => {
       // Only proceed if this session is still active
@@ -521,7 +521,7 @@ function App() {
       videoElement.removeEventListener('loadedmetadata', handleMetadata);
       if (playTimer) clearTimeout(playTimer);
     };
-  }, [stream]);
+  }, [cameraActive, stream]);
 
   // Monitor photo state changes
   useEffect(() => {
