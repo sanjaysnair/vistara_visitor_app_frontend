@@ -458,22 +458,21 @@ function App() {
 
   // Handle camera setup when stream becomes available
   useEffect(() => {
-    // Only proceed if we have a stream and it's different from what we've already set up
-    if (!stream || !videoRef.current || cameraStreamRef.current === stream) {
+    if (!stream || !videoRef.current) {
+      console.log('[Effect] Skipping: no stream or videoRef', { stream: !!stream, videoRef: !!videoRef.current });
       return;
     }
 
     console.log('Setting up video element with stream...');
-    const videoElement = videoRef.current;
-    cameraStreamRef.current = stream; // Mark this stream as initialized
     videoElement.srcObject = stream;
     console.log('✅ srcObject set');
 
     let playTimer = null;
     let mounted = true;
+    console.log('[Setup] Defining attemptPlay function...');
 
     const attemptPlay = async () => {
-      if (!mounted || !videoElement.isConnected) return;
+      if (!mounted) return;
       
       try {
         console.log('[Play] Calling play()...');
@@ -492,15 +491,19 @@ function App() {
       }
     };
 
+    console.log('[Setup] Registering metadata listener...');
     videoElement.addEventListener('loadedmetadata', handleMetadata);
+    console.log('[Setup] Metadata listener registered');
 
     // Fallback timer after 1 second
+    console.log('[Setup] Scheduling timeout in 1000ms...');
     playTimer = setTimeout(() => {
       if (mounted) {
         console.log('[Timeout] Attempting play via timeout');
         attemptPlay();
       }
     }, 1000);
+    console.log('[Setup] Timeout scheduled');
 
     return () => {
       mounted = false;
