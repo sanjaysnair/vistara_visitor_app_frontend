@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useLayoutEffect } from 'react';
 import { Camera, RefreshCw, Send, CheckCircle, AlertCircle, User, Phone, Home, Mail, Eye, Trash2, Edit2, BarChart3, Search, Download, Printer } from 'lucide-react';
 import './App.css';
 
@@ -42,8 +42,7 @@ function App() {
   const [searchResults, setSearchResults] = useState([]);
   const [searchLoading, setSearchLoading] = useState(false);
   
-  const videoRef = useRef(null);
-  const canvasRef = useRef(null);
+  const cameraStreamRef = useRef(null);
 
   // Initialize camera
   const startCamera = async () => {
@@ -73,10 +72,19 @@ function App() {
 
   // Stop camera
   const stopCamera = useCallback(() => {
+    // Stop tracks if a stream exists
     if (stream) {
       stream.getTracks().forEach(track => track.stop());
-      setStream(null);
     }
+
+    // Ensure the video element is cleared and paused so any pending play() is not interrupted
+    if (videoRef.current) {
+      try { videoRef.current.pause(); } catch (e) { /* ignore */ }
+      try { videoRef.current.srcObject = null; } catch (e) { /* ignore */ }
+    }
+
+    // Clear stream state and UI flag
+    setStream(null);
     setCameraActive(false);
   }, [stream]);
 
@@ -446,42 +454,58 @@ function App() {
     };
   }, [stopCamera]);
 
-  // Handle camera setup when cameraActive changes
+  // Handle camera setup when stream becomes available
   useEffect(() => {
-    if (cameraActive && videoRef.current && stream) {
-      console.log('Setting up video element with stream...');
-      const videoElement = videoRef.current;
-      videoElement.srcObject = stream;
-      
-      const handleMetadata = () => {
-        console.log('Video metadata loaded!');
-        if (videoElement) {
-          console.log('Video dimensions:', videoElement.videoWidth, 'x', videoElement.videoHeight);
-        }
-      };
-      
-      videoElement.addEventListener('loadedmetadata', handleMetadata);
-      
-      // Attempt to play with proper error handling
-      const playPromise = videoElement.play();
-      if (playPromise !== undefined) {
-        playPromise
-          .catch(err => {
-            console.error('Play error:', err);
-            // Try playing again after a short delay
-            setTimeout(() => {
-              if (videoElement && videoElement.srcObject) {
-                videoElement.play().catch(e => console.error('Retry play error:', e));
-              }
-            }, 500);
-          });
-      }
-      
-      return () => {
-        videoElement.removeEventListener('loadedmetadata', handleMetadata);
-      };
+    // Only proceed if we have a stream and it's different from what we've already set up
+    if (!stream || !videoRef.current || cameraStreamRef.current === stream) {
+      return;
     }
-  }, [cameraActive, stream]);
+
+    console.log('Setting up video element with stream...');
+    const videoElement = videoRef.current;
+    cameraStreamRef.current = stream; // Mark this stream as initialized
+    videoElement.srcObject = stream;
+    console.log('✅ srcObject set');
+
+    let playTimer = null;
+    let mounted = true;
+
+    const attemptPlay = async () => {
+      if (!mounted || !videoElement.isConnected) return;
+      
+      try {
+        console.log('[Play] Calling play()...');
+        await videoElement.play();
+        console.log('✅ Video playing!');
+      } catch (err) {
+        console.warn('[Play Error]', err.name);
+      }
+    };
+
+    // Wait for metadata or timeout
+    const handleMetadata = () => {
+      if (mounted) {
+        console.log('✅ Metadata loaded');
+        attemptPlay();
+      }
+    };
+
+    videoElement.addEventListener('loadedmetadata', handleMetadata);
+
+    // Fallback timer after 1 second
+    playTimer = setTimeout(() => {
+      if (mounted) {
+        console.log('[Timeout] Attempting play via timeout');
+        attemptPlay();
+      }
+    }, 1000);
+
+    return () => {
+      mounted = false;
+      videoElement.removeEventListener('loadedmetadata', handleMetadata);
+      if (playTimer) clearTimeout(playTimer);
+    };
+  }, [stream]);
 
   // Monitor photo state changes
   useEffect(() => {
@@ -726,7 +750,6 @@ function App() {
                   <div className="camera-container">
                     <video
                       ref={videoRef}
-                      autoPlay
                       playsInline
                       muted
                       width={1280}
