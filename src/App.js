@@ -197,8 +197,6 @@ function App() {
       showNotification('error', '❌ Incorrect password');
     }
   };
-    }
-  };
 
   const handleAdminLogout = () => {
     setCurrentPage('checkin');
