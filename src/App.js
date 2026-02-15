@@ -69,7 +69,7 @@ function App() {
       console.log('Media stream tracks:', mediaStream.getTracks().length);
       
       // Update state to trigger video element render
-      console.log('📝 Calling setStream...');
+      console.log('📝 Calling setStream... modified');
       setStream(mediaStream);
       console.log('📝 Calling setCameraActive(true)...');
       setCameraActive(true);
