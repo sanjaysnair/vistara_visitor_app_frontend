@@ -45,6 +45,7 @@ function App() {
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
   const streamRef = useRef(null);
+  const sessionRef = useRef(null);
   
   // Keep stream in sync with ref to avoid effect re-runs
   useEffect(() => {
@@ -67,43 +68,7 @@ function App() {
       console.log('Got media stream:', mediaStream);
       console.log('Media stream tracks:', mediaStream.getTracks().length);
       
-      // Immediately set up the video element before updating state
-      if (videoRef.current) {
-        console.log('Setting up video element with stream (direct)...');
-        videoRef.current.srcObject = mediaStream;
-
-        // Attempt to play immediately
-        const playWithRetry = async () => {
-          try {
-            console.log('[Play] Calling play()...');
-            await videoRef.current.play();
-            console.log('✅ Video playing!');
-          } catch (err) {
-            console.warn('[Play Error]', err.name);
-            // Retry after metadata
-            if (videoRef.current) {
-              const onceMetadata = () => {
-                videoRef.current.removeEventListener('loadedmetadata', onceMetadata);
-                videoRef.current.play().catch(e => console.warn('[Play Retry Error]', e.name));
-              };
-              videoRef.current.addEventListener('loadedmetadata', onceMetadata);
-            }
-          }
-        };
-
-        // Try immediately
-        await playWithRetry();
-
-        // Fallback: try again after 700ms if still not playing
-        setTimeout(() => {
-          if (videoRef.current && videoRef.current.paused && videoRef.current.srcObject === mediaStream) {
-            console.log('[Fallback] Attempting to play after timeout...');
-            videoRef.current.play().catch(e => console.warn('[Fallback Play Error]', e.name));
-          }
-        }, 700);
-      }
-      
-      // Now update state
+      // Update state to trigger video element render
       setStream(mediaStream);
       setCameraActive(true);
       showNotification('info', 'Camera ready! Click "Capture Photo" when ready.');
@@ -490,12 +455,67 @@ function App() {
     setTimeout(() => printWindow.print(), 250);
   };
 
-  // Cleanup on unmount
+  // Set up video element once it's rendered in the DOM
   useEffect(() => {
-    return () => {
-      stopCamera();
+    if (!cameraActive || !videoRef.current || !streamRef.current) {
+      return;
+    }
+
+    const videoElement = videoRef.current;
+    const mediaStream = streamRef.current;
+    const sessionId = {}; // Unique ID for this camera session
+    sessionRef.current = sessionId;
+
+    console.log('Setting up video element with stream (from effect)...');
+    videoElement.srcObject = mediaStream;
+
+    // Attempt to play with retry on metadata
+    const attemptPlay = async () => {
+      // Only execute if this session is still active
+      if (sessionRef.current !== sessionId) {
+        return;
+      }
+      
+      try {
+        console.log('[Play] Calling play()...');
+        await videoElement.play();
+        console.log('✅ Video playing!');
+      } catch (err) {
+        console.warn('[Play Error]', err.name);
+      }
     };
-  }, [stopCamera]);
+
+    const handleMetadata = () => {
+      if (sessionRef.current === sessionId) {
+        console.log('✅ Metadata loaded - attempting play');
+        attemptPlay();
+      }
+    };
+
+    videoElement.addEventListener('loadedmetadata', handleMetadata);
+    console.log('📌 Metadata listener added');
+
+    // Immediate attempt
+    attemptPlay();
+
+    // Fallback: try again after 1000ms
+    // DON'T clear this in cleanup - just check session ID before executing
+    setTimeout(() => {
+      if (sessionRef.current === sessionId) {
+        console.log('[Fallback] 1000ms timeout - attempting play');
+        attemptPlay();
+      }
+    }, 1000);
+
+    return () => {
+      // Mark this session as no longer active
+      // Don't clear timers - let them check session ID before executing
+      if (sessionRef.current === sessionId) {
+        console.log('🗑️ Effect cleanup (Strict Mode double-effect)');
+        videoElement.removeEventListener('loadedmetadata', handleMetadata);
+      }
+    };
+  }, [cameraActive]);
 
   // Monitor photo state changes
   useEffect(() => {
