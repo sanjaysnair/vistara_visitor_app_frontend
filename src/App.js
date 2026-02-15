@@ -55,7 +55,6 @@ function App() {
   // Initialize camera
   const startCamera = async () => {
     try {
-      console.log('Starting camera...');
       const mediaStream = await navigator.mediaDevices.getUserMedia({
         video: {
           facingMode: 'user',
@@ -65,15 +64,8 @@ function App() {
         audio: false
       });
       
-      console.log('Got media stream:', mediaStream);
-      console.log('Media stream tracks:', mediaStream.getTracks().length);
-      
-      // Update state to trigger video element render
-      console.log('📝 Calling setStream... modified');
       setStream(mediaStream);
-      console.log('📝 Calling setCameraActive(true)...');
       setCameraActive(true);
-      console.log('✅ State updates called');
       showNotification('info', 'Camera ready! Click "Capture Photo" when ready.');
     } catch (err) {
       console.error('Camera error:', err);
@@ -460,72 +452,51 @@ function App() {
 
   // Set up video element once it's rendered in the DOM
   useEffect(() => {
-    console.log('[Effect] Check: cameraActive=', cameraActive, 'videoRef=', !!videoRef.current, 'streamRef=', !!streamRef.current);
-    
     if (!cameraActive || !videoRef.current || !streamRef.current) {
       return;
     }
 
     const videoElement = videoRef.current;
     const mediaStream = streamRef.current;
-    const sessionId = {}; // Unique ID for this camera session
+    const sessionId = {};
     sessionRef.current = sessionId;
 
-    console.log('Setting up video element with stream (from effect)...');
     videoElement.srcObject = mediaStream;
 
-    // Attempt to play with retry on metadata
     const attemptPlay = async () => {
-      // Only execute if this session is still active
       if (sessionRef.current !== sessionId) {
         return;
       }
       
       try {
-        console.log('[Play] Calling play()...');
         await videoElement.play();
-        console.log('✅ Video playing!');
       } catch (err) {
-        console.warn('[Play Error]', err.name);
+        // Ignore play errors - fallback will retry
       }
     };
 
     const handleMetadata = () => {
       if (sessionRef.current === sessionId) {
-        console.log('✅ Metadata loaded - attempting play');
         attemptPlay();
       }
     };
 
     videoElement.addEventListener('loadedmetadata', handleMetadata);
-    console.log('📌 Metadata listener added');
-
-    // Immediate attempt
     attemptPlay();
 
     // Fallback: try again after 1000ms
-    // DON'T clear this in cleanup - just check session ID before executing
     setTimeout(() => {
       if (sessionRef.current === sessionId) {
-        console.log('[Fallback] 1000ms timeout - attempting play');
         attemptPlay();
       }
     }, 1000);
 
     return () => {
-      // Mark this session as no longer active
-      // Don't clear timers - let them check session ID before executing
       if (sessionRef.current === sessionId) {
-        console.log('🗑️ Effect cleanup (Strict Mode double-effect)');
         videoElement.removeEventListener('loadedmetadata', handleMetadata);
       }
     };
   }, [cameraActive]);
-
-  // Monitor photo state changes
-  useEffect(() => {
-    console.log('📊 Photo state changed:', photo ? `✅ SET (${photo.length} bytes)` : '❌ NOT SET');
-  }, [photo]);
 
   const isFormValid = formData.name && formData.phone && formData.flatNumber && photo;
 
