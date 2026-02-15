@@ -69,8 +69,11 @@ function App() {
       console.log('Media stream tracks:', mediaStream.getTracks().length);
       
       // Update state to trigger video element render
+      console.log('📝 Calling setStream...');
       setStream(mediaStream);
+      console.log('📝 Calling setCameraActive(true)...');
       setCameraActive(true);
+      console.log('✅ State updates called');
       showNotification('info', 'Camera ready! Click "Capture Photo" when ready.');
     } catch (err) {
       console.error('Camera error:', err);
@@ -457,6 +460,8 @@ function App() {
 
   // Set up video element once it's rendered in the DOM
   useEffect(() => {
+    console.log('[Effect] Check: cameraActive=', cameraActive, 'videoRef=', !!videoRef.current, 'streamRef=', !!streamRef.current);
+    
     if (!cameraActive || !videoRef.current || !streamRef.current) {
       return;
     }
